@@ -360,10 +360,13 @@ static bool            _onUsb       = false;
 static void clockRefreshRtc() {
   if (millis() - _clkLastRead < 1000) return;
   _clkLastRead = millis();
-  // Plus2 has no AXP/VBUS rail read on all units; treat "charging or VBUS
-  // present" as on-USB. getVBUSVoltage() returns -1 on models without it.
+  // Plus2 uses TP4057 charger with no GPIO feedback — isCharging() always
+  // returns charge_unknown and getVBUSVoltage() is unsupported (-1).
+  // Heuristic: TP4057 holds cell at ≥4.2V while USB is connected; on battery
+  // alone the voltage drops below 4.15V within seconds of disconnecting.
   _onUsb = M5.Power.getVBUSVoltage() > 4000
-        || M5.Power.isCharging() == m5::Power_Class::is_charging;
+        || M5.Power.isCharging() == m5::Power_Class::is_charging
+        || M5.Power.getBatteryVoltage() > 4150;
   M5.Rtc.getTime(&_clkTm);
   M5.Rtc.getDate(&_clkDt);
 }
